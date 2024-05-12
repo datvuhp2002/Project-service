@@ -39,6 +39,30 @@ class ClientService {
       previousPage,
     });
   };
+  static getAllClientFromProject = async (
+    { items_per_page, page, search, nextPage, previousPage },
+    project_id
+  ) => {
+    let query = [];
+    query.push({
+      deletedMark: false,
+    });
+    query.push({
+      ProjectProperty: {
+        some: {
+          project_id,
+        },
+      },
+    });
+    return await this.queryClient({
+      query: query,
+      items_per_page,
+      page,
+      search,
+      nextPage,
+      previousPage,
+    });
+  };
   static trash = async ({
     items_per_page,
     page,
@@ -120,6 +144,9 @@ class ClientService {
     let whereClause = {
       OR: [
         {
+          client_id: searchKeyword,
+        },
+        {
           fullname: {
             contains: searchKeyword,
           },
@@ -144,7 +171,7 @@ class ClientService {
     if (query && query.length > 0) {
       whereClause.AND = query;
     }
-    const clients = await prisma.user.findMany({
+    const clients = await prisma.client.findMany({
       take: itemsPerPage,
       skip,
       select: this.select,
@@ -153,7 +180,7 @@ class ClientService {
         createdAt: "desc",
       },
     });
-    const total = await prisma.user.count({
+    const total = await prisma.client.count({
       where: whereClause,
     });
 

@@ -7,8 +7,13 @@ const router = express.Router();
 
 // create
 router.post("/create", asyncHandler(ClientController.create));
-// getAll
+// get list of clients
 router.get("/getAll", asyncHandler(ClientController.getAll));
+// get list of clients from project
+router.get(
+  "/getAllClientFromProject/:id",
+  asyncHandler(ClientController.getAllClientFromProject)
+);
 router.get("/trash", asyncHandler(ClientController.trash));
 // find by Id
 router.post("/detail/:id", asyncHandler(ClientController.detail));

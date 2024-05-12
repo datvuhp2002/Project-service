@@ -13,6 +13,7 @@ const {
 const projectController = require("../controllers/project.controller");
 class ProjectService {
   static select = {
+    project_id: true,
     name: true,
     projectCode: true,
     description: true,
@@ -91,7 +92,6 @@ class ProjectService {
       previousPage,
     });
   };
-
   // detail project
   static detail = async (id) => {
     return await prisma.project.findUnique({

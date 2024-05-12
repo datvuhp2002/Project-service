@@ -24,6 +24,15 @@ class ClientController {
       data: await ClientService.getAll(req.query),
     }).send(res);
   };
+  getAllClientFromProject = async (req, res, next) => {
+    new SuccessResponse({
+      message: "Danh sách khách hàng",
+      data: await ClientService.getAllClientFromProject(
+        req.query,
+        req.params.id
+      ),
+    }).send(res);
+  };
   trash = async (req, res, next) => {
     new SuccessResponse({
       message: "Danh sách khách hàng đã bị xoá",
