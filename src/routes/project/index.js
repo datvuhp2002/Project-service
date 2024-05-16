@@ -2,6 +2,7 @@
 const express = require("express");
 const ProjectController = require("../../controllers/project.controller");
 const asyncHandler = require("../../helpers/asyncHandler");
+const { uploadProject } = require("../../middleware");
 const router = express.Router();
 
 // Lấy ra hết tất cả user
@@ -25,4 +26,12 @@ router.delete("/delete/:id", asyncHandler(ProjectController.delete));
 // Khôi phục một người dùng đã bị xoá
 router.put("/restore/:id", asyncHandler(ProjectController.restore));
 
+router.post(
+  "/uploadFileFromLocal/:id",
+  uploadProject.single("file"),
+  asyncHandler(ProjectController.uploadFileFromLocal)
+);
+router.post("/getFileImage", asyncHandler(ProjectController.getFileImage));
+router.post("/getFile", asyncHandler(ProjectController.getFile));
+router.post("/deleteFile/:id", asyncHandler(ProjectController.deleteFile));
 module.exports = router;

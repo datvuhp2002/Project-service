@@ -12,8 +12,21 @@ const storageClient = new CloudinaryStorage({
     },
   },
 });
+const storageProjectFile = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    return {
+      folder: `project/${req.params.id}`,
+      resource_type: "raw",
+      raw_convert: "aspose",
+      public_id: file.originalname,
+    };
+  },
+});
 const uploadClient = multer({
   storage: storageClient,
 });
-
-module.exports = { uploadClient };
+const uploadProject = multer({
+  storage: storageProjectFile,
+});
+module.exports = { uploadClient, uploadProject };
