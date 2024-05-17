@@ -90,6 +90,20 @@ class ClientService {
     return await prisma.client.findFirst({ where: { role_id: id } });
   };
   static update = async (client_id, data, modifiedBy) => {
+    if (data.avatar) {
+      try {
+        return await prisma.client.update({
+          where: { client_id },
+          data: { ...data, modifiedBy },
+          select: this.select,
+        });
+      } catch (errr) {
+        cloudinary.uploader.destroy(data.avatar);
+        throw new BadRequestError(
+          "Cập nhật không thành công, vui lòng thử lại."
+        );
+      }
+    }
     return await prisma.client.update({
       where: { client_id },
       data: { ...data, modifiedBy },
@@ -144,9 +158,6 @@ class ClientService {
     let whereClause = {
       OR: [
         {
-          client_id: searchKeyword,
-        },
-        {
           fullname: {
             contains: searchKeyword,
           },
@@ -168,6 +179,11 @@ class ClientService {
         },
       ],
     };
+    if (searchKeyword !== "") {
+      whereClause.OR.push({
+        client_id: searchKeyword,
+      });
+    }
     if (query && query.length > 0) {
       whereClause.AND = query;
     }
@@ -183,11 +199,9 @@ class ClientService {
     const total = await prisma.client.count({
       where: whereClause,
     });
-
     const lastPage = Math.ceil(total / itemsPerPage);
     const nextPageNumber = currentPage + 1 > lastPage ? null : currentPage + 1;
     const previousPageNumber = currentPage - 1 < 1 ? null : currentPage - 1;
-
     return {
       clients: clients,
       total,

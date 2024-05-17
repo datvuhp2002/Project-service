@@ -4,7 +4,8 @@ const { getInfoData } = require("../utils");
 const prisma = require("../prisma");
 const RoleService = require("./client.service");
 const ProjectPropertyService = require("./project.property.service");
-const bcrypt = require("bcrypt");
+const cloudinary = require("../configs/cloudinary.config");
+
 const {
   BadRequestError,
   AuthFailureError,
@@ -45,10 +46,19 @@ class ProjectService {
       data: { ...projectData, modifiedBy },
     });
     if (newProject) {
-      await ProjectPropertyService.create({
+      const newProjectProperty = await ProjectPropertyService.create({
         project_id: newProject.project_id,
         ...projectPropertyData,
       });
+      if (newProjectProperty) {
+        return true;
+      }
+      await prisma.project.delete({
+        where: { project_id: newProject.project_id },
+      });
+      throw new BadRequestError(
+        "Tạo một dự án mới không thành công, vui lòng thử lại"
+      );
     }
     return {
       code: 201,
@@ -66,8 +76,33 @@ class ProjectService {
     nextPage,
     previousPage,
   }) => {
+    let query = [];
+    query.push({
+      deletedMark: false,
+    });
     return await this.queryProject({
-      condition: false,
+      query: query,
+      items_per_page,
+      page,
+      search,
+      nextPage,
+      previousPage,
+    });
+  };
+  // get all projects in department
+  static getAllProjectInDepartment = async (
+    { items_per_page, page, search, nextPage, previousPage },
+    { id }
+  ) => {
+    let query = [];
+    query.push({
+      ProjectProperty: {
+        department_id: id,
+      },
+      deletedMark: false,
+    });
+    return await this.queryProject({
+      query: query,
       items_per_page,
       page,
       search,
@@ -83,8 +118,12 @@ class ProjectService {
     nextPage,
     previousPage,
   }) => {
+    let query = [];
+    query.push({
+      deletedMark: true,
+    });
     return await this.queryProject({
-      condition: true,
+      query: query,
       items_per_page,
       page,
       search,
@@ -93,9 +132,9 @@ class ProjectService {
     });
   };
   // detail project
-  static detail = async (id) => {
+  static detail = async (project_id) => {
     return await prisma.project.findUnique({
-      where: { user_id: id },
+      where: { project_id },
       select: this.select,
     });
   };
@@ -122,8 +161,12 @@ class ProjectService {
       },
     });
     if (deleteProject) {
-      await ProjectPropertyService.delete(project_id);
-      return deleteProject;
+      const deleteProjectProperty = await ProjectPropertyService.delete(
+        project_id
+      );
+      if (deleteProjectProperty) return true;
+      await this.restore(project_id);
+      throw new BadRequestError("Xoá dự án không thành công");
     }
     return null;
   };
@@ -137,10 +180,81 @@ class ProjectService {
       },
     });
     if (restoreProject) {
-      await projectController.restore(project_id);
-      return restoreProject;
+      const restoreProjectProperty = await ProjectPropertyService.restore(
+        project_id
+      );
+      if (restoreProjectProperty) return true;
+      await this.delete(project_id);
+      throw new BadRequestError("Khôi phục dự án không thành công");
     }
     return null;
+  };
+  // upload file to cloud and store it in db
+  static uploadFile = async (project_id, { path, filename }) => {
+    const existingProject = await prisma.project.findUnique({
+      where: { project_id },
+    });
+    if (!existingProject) throw new BadRequestError("Dự án không tồn tại");
+    try {
+      const uploadFile = await prisma.project.update({
+        where: { project_id },
+        data: {
+          document: [...existingProject.document, filename],
+        },
+      });
+      if (uploadFile) return true;
+      cloudinary.uploader.destroy(filename);
+      return false;
+    } catch (e) {
+      throw new BadRequestError(`Đã sảy ra lỗi: ${e.message}`);
+    }
+  };
+  // get Image File from cloudinary
+  static getFileImage = async ({ filename }) => {
+    const options = {
+      height: 500,
+      width: 500,
+      format: "jpg",
+      quality: "auto",
+    };
+    try {
+      const result = await cloudinary.url(filename, options);
+      return result;
+    } catch (error) {
+      console.error(error);
+    }
+  };
+  static getFile = async ({ filename }) => {
+    try {
+      const result = await cloudinary.url(filename, { resource_type: "raw" });
+      return result;
+    } catch (error) {
+      console.error(error);
+    }
+  };
+  static deleteFile = async (project_id, { filename }) => {
+    const existingProject = await prisma.project.findUnique({
+      where: { project_id },
+    });
+    if (!existingProject) throw new BadRequestError("Dự án không tồn tại");
+    try {
+      const updatedDocument = existingProject.document.filter(
+        (file) => file !== filename
+      );
+      const uploadFile = await prisma.project.update({
+        where: { project_id },
+        data: {
+          document: updatedDocument,
+        },
+      });
+      if (uploadFile) {
+        cloudinary.uploader.destroy(filename);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      throw new BadRequestError(`Đã sảy ra lỗi: ${e.message}`);
+    }
   };
   static queryProject = async ({
     query,
@@ -150,10 +264,8 @@ class ProjectService {
     nextPage,
     previousPage,
   }) => {
-    const itemsPerPage = Number(items_per_page) || 10;
-    const currentPage = Number(page) || 1;
     const searchKeyword = search || "";
-    const skip = currentPage > 1 ? (currentPage - 1) * itemsPerPage : 0;
+    let itemsPerPage = 10;
     let whereClause = {
       OR: [
         {
@@ -168,10 +280,19 @@ class ProjectService {
         },
       ],
     };
-
     if (query && query.length > 0) {
       whereClause.AND = query;
     }
+    const total = await prisma.project.count({
+      where: whereClause,
+    });
+    if (items_per_page !== "ALL") {
+      itemsPerPage = Number(items_per_page) || 10;
+    } else {
+      itemsPerPage = total;
+    }
+    const currentPage = Number(page) || 1;
+    const skip = currentPage > 1 ? (currentPage - 1) * itemsPerPage : 0;
     const projects = await prisma.project.findMany({
       take: itemsPerPage,
       skip,
@@ -180,9 +301,6 @@ class ProjectService {
       orderBy: {
         createdAt: "desc",
       },
-    });
-    const total = await prisma.project.count({
-      where: whereClause,
     });
     const lastPage = Math.ceil(total / itemsPerPage);
     const nextPageNumber = currentPage + 1 > lastPage ? null : currentPage + 1;

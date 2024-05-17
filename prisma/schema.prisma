@@ -21,7 +21,7 @@ model Project {
   startAt         DateTime         @default(now())
   endAt           DateTime
   turnover        String?
-  document        String?
+  document        String[]
   investor        String?
   createdBy       String?          @db.ObjectId
   modifiedBy      String?          @db.ObjectId

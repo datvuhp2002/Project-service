@@ -15,6 +15,15 @@ class ProjectController {
       data: await ProjectService.getAll(req.query),
     }).send(res);
   };
+  getAllProjectInDepartment = async (req, res, next) => {
+    new SuccessResponse({
+      message: "Lấy ra danh sách dự án thành công",
+      data: await ProjectService.getAllProjectInDepartment(
+        req.query,
+        req.params
+      ),
+    }).send(res);
+  };
   trash = async (req, res, next) => {
     new SuccessResponse({
       message: "Lấy ra danh sách dự án bị xoá thành công",
@@ -46,6 +55,34 @@ class ProjectController {
     new SuccessResponse({
       message: "Khôi phục thành công dự án",
       data: await ProjectService.restore(req.params.id),
+    }).send(res);
+  };
+  uploadFileFromLocal = async (req, res, next) => {
+    const { file } = req;
+    if (!file) {
+      throw new BadRequestError("File is missing");
+    }
+    new SuccessResponse({
+      message: "Tải file lên thành công",
+      data: await ProjectService.uploadFile(req.params.id, file),
+    }).send(res);
+  };
+  getFileImage = async (req, res, next) => {
+    new SuccessResponse({
+      message: "lấy ảnh file thành công",
+      data: await ProjectService.getFileImage(req.body),
+    }).send(res);
+  };
+  getFile = async (req, res, next) => {
+    new SuccessResponse({
+      message: "lấy file về thành công",
+      data: await ProjectService.getFile(req.body),
+    }).send(res);
+  };
+  deleteFile = async (req, res, next) => {
+    new SuccessResponse({
+      message: "xoá file thành công",
+      data: await ProjectService.deleteFile(req.params.id, req.body),
     }).send(res);
   };
 }
