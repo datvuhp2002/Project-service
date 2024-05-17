@@ -89,6 +89,27 @@ class ProjectService {
       previousPage,
     });
   };
+  // get all projects in department
+  static getAllProjectInDepartment = async (
+    { items_per_page, page, search, nextPage, previousPage },
+    { id }
+  ) => {
+    let query = [];
+    query.push({
+      ProjectProperty: {
+        department_id: id,
+      },
+      deletedMark: false,
+    });
+    return await this.queryProject({
+      query: query,
+      items_per_page,
+      page,
+      search,
+      nextPage,
+      previousPage,
+    });
+  };
   // get all projects has been deleted
   static trash = async ({
     items_per_page,

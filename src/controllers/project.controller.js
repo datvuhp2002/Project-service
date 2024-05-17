@@ -15,6 +15,15 @@ class ProjectController {
       data: await ProjectService.getAll(req.query),
     }).send(res);
   };
+  getAllProjectInDepartment = async (req, res, next) => {
+    new SuccessResponse({
+      message: "Lấy ra danh sách dự án thành công",
+      data: await ProjectService.getAllProjectInDepartment(
+        req.query,
+        req.params
+      ),
+    }).send(res);
+  };
   trash = async (req, res, next) => {
     new SuccessResponse({
       message: "Lấy ra danh sách dự án bị xoá thành công",
